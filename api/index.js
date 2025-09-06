@@ -44,7 +44,7 @@ module.exports = async (req, res) => {
       
       if (elements.length > 0) {
         elements.each((index, element) => {
-          if (index >= 5) return false; // Limit to 5 items
+          if (index >= 10) return false; // Limit to 10 items
           
           const $el = $(element);
           const title = $el.find('h1, h2, h3, h4, .title, [class*="title"]').first().text().trim();
@@ -56,14 +56,15 @@ module.exports = async (req, res) => {
               title,
               link: link.startsWith('http') ? link : `https://nca.gov.sa${link}`,
               desc: desc || 'No description available',
-              pubDate: new Date().toUTCString()
+              pubDate: new Date().toUTCString(),
+              guid: `nca-${index}-${Date.now()}`
             });
           }
         });
         
         if (items.length > 0) {
           console.log(`Found ${items.length} items with selector "${selector}"`);
-          break; // Stop after finding items
+          break;
         }
       }
     }
@@ -72,13 +73,12 @@ module.exports = async (req, res) => {
     if (items.length === 0) {
       console.log('Trying fallback: looking for any clickable elements with text');
       $('a').each((index, element) => {
-        if (index >= 10) return false; // Limit to 10 items
+        if (index >= 10) return false;
         
         const $el = $(element);
         const title = $el.text().trim();
         const link = $el.attr('href');
         
-        // Only include if it looks like a news item (has reasonable length and contains news-related keywords)
         if (title && link && title.length > 10 && title.length < 200) {
           const newsKeywords = ['news', 'update', 'announcement', 'press', 'release', 'statement'];
           const hasNewsKeyword = newsKeywords.some(keyword => 
@@ -90,10 +90,22 @@ module.exports = async (req, res) => {
               title,
               link: link.startsWith('http') ? link : `https://nca.gov.sa${link}`,
               desc: 'No description available',
-              pubDate: new Date().toUTCString()
+              pubDate: new Date().toUTCString(),
+              guid: `nca-${index}-${Date.now()}`
             });
           }
         }
+      });
+    }
+    
+    // If still no items, create some sample items to ensure the feed works
+    if (items.length === 0) {
+      items.push({
+        title: 'NCA News Feed - No recent articles found',
+        link: 'https://nca.gov.sa/en/news',
+        desc: 'This RSS feed is working but no recent articles were found on the NCA website.',
+        pubDate: new Date().toUTCString(),
+        guid: `nca-sample-${Date.now()}`
       });
     }
     
@@ -105,16 +117,25 @@ module.exports = async (req, res) => {
       <link>${item.link}</link>
       <description><![CDATA[${item.desc}]]></description>
       <pubDate>${item.pubDate}</pubDate>
+      <guid isPermaLink="false">${item.guid}</guid>
     </item>`).join('\n');
 
     const rssFeed = `<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0">
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>NCA News Feed</title>
     <link>https://nca.gov.sa/en/news</link>
-    <description>Automated RSS feed from NCA</description>
+    <description>Automated RSS feed from National Cybersecurity Authority (NCA) Saudi Arabia</description>
     <language>en</language>
     <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
+    <pubDate>${new Date().toUTCString()}</pubDate>
+    <ttl>60</ttl>
+    <atom:link href="https://nca-rss-generator.vercel.app/rss" rel="self" type="application/rss+xml"/>
+    <image>
+      <url>https://nca.gov.sa/favicon.ico</url>
+      <title>NCA News Feed</title>
+      <link>https://nca.gov.sa/en/news</link>
+    </image>
     ${rssItems}
   </channel>
 </rss>`;

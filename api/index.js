@@ -10,8 +10,10 @@ module.exports = async (req, res) => {
   try {
     console.log('Starting to scrape NCA news...');
     
+    // Launch browser with Chrome executable path for Vercel
     browser = await puppeteer.launch({ 
       headless: 'new',
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/google-chrome-stable',
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
@@ -20,7 +22,9 @@ module.exports = async (req, res) => {
         '--no-first-run',
         '--no-zygote',
         '--disable-gpu',
-        '--single-process'
+        '--single-process',
+        '--disable-web-security',
+        '--disable-features=VizDisplayCompositor'
       ]
     });
     
